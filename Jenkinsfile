@@ -73,7 +73,13 @@ print('Email sent!')
 
         stage('Login to ECR') {
             steps {
-                sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO'
+                withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+                    '''
+                }
             }
         }
 
@@ -87,21 +93,3 @@ print('Email sent!')
         }
 
         stage('Deploy to EKS') {
-            steps {
-                sh '''
-                    aws eks --region ap-south-1 update-kubeconfig --name mycluster
-                    kubectl apply -f nginx.deployment.yaml
-                '''
-            }
-        }
-    }
-
-    post {
-        failure {
-            echo 'Pipeline failed!'
-        }
-        success {
-            echo 'Pipeline completed successfully!'
-        }
-    }
-}
