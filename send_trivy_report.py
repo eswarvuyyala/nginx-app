@@ -1,3 +1,9 @@
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+from email.mime.text import MIMEText
+
 # Email configuration
 gmail_user = 'vuyyala6@gmail.com'
 gmail_app_password = 'gpxekuxbssuqwope'
@@ -11,12 +17,11 @@ msg['From'] = gmail_user
 msg['To'] = to
 msg['Subject'] = subject
 
-msg.attach(MIMEBase('application', 'octet-stream'))
-msg.attach(MIMEBase('application', 'octet-stream'))
-msg.attach(MIMEBase('application', 'octet-stream'))
+# Attach the body text
+msg.attach(MIMEText(body, 'plain'))
 
-# Attach the report
-filename = 'trivy-report.txt'
+# Attach the report file (use correct filename here)
+filename = 'trivy-report.json'
 with open(filename, 'rb') as attachment:
     part = MIMEBase('application', 'octet-stream')
     part.set_payload(attachment.read())
