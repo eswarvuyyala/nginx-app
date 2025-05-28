@@ -89,7 +89,7 @@ print('Email sent!')
         stage('Deploy to EKS') {
             steps {
                 sh '''
-                    aws eks --region $AWS_REGION update-kubeconfig --name mycluster-cluster
+                    aws eks --region ap-south-1 update-kubeconfig --name mycluster
                     kubectl apply -f nginx.deployment.yaml
                 '''
             }
