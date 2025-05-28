@@ -1,0 +1,16 @@
+# SonarQube server details
+sonar.host.url=http://3.85.103.61:9000
+
+# Project identification
+sonar.projectKey=my-docker-project
+sonar.projectName=My Docker Project
+sonar.projectVersion=1.0
+
+# Path to sources
+sonar.sources=.
+
+# Language
+sonar.language=docker
+
+# Encoding of source files
+sonar.sourceEncoding=UTF-8
