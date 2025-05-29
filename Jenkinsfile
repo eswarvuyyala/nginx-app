@@ -29,7 +29,7 @@ pipeline {
             }
         }
 
-        // 🚫 Temporarily disabled email sending
+        // Email stage commented out for now
         // stage('Send Trivy Scan Report') {
         //     steps {
         //         withCredentials([usernamePassword(credentialsId: 'GMAIL_SMTP_CREDENTIALS', usernameVariable: 'GMAIL_USER', passwordVariable: 'GMAIL_APP_PASSWORD')]) {
@@ -65,8 +65,8 @@ pipeline {
                 '''
             }
         }
-        
-                stage('Create Namespace') {
+
+        stage('Create Namespace') {
             steps {
                 sh '''
                     aws eks --region $AWS_REGION update-kubeconfig --name $EKS_CLUSTER
@@ -78,16 +78,8 @@ pipeline {
         stage('Deploy to EKS') {
             steps {
                 sh '''
-                    kubectl apply -f nginx.deployment.yaml -n app-nginx
-                '''
-            }
-        }
-
-        stage('Deploy to EKS') {
-            steps {
-                sh '''
                     aws eks --region $AWS_REGION update-kubeconfig --name $EKS_CLUSTER
-                    kubectl apply -f nginx.deployment.yaml
+                    kubectl apply -f nginx.deployment.yaml -n app-nginx
                 '''
             }
         }
@@ -95,10 +87,10 @@ pipeline {
 
     post {
         failure {
-            echo 'Pipeline failed!'
+            echo '❌ Pipeline failed!'
         }
         success {
-            echo 'Pipeline completed successfully!'
+            echo '✅ Pipeline completed successfully!'
         }
     }
 }
