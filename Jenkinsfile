@@ -9,7 +9,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout Code') {
             steps {
                 git url: 'https://github.com/eswarvuyyala/nginx-app.git', branch: 'main'
@@ -24,9 +23,7 @@ pipeline {
 
         stage('Trivy Scan') {
             steps {
-                sh '''
-                    trivy image --format table --output trivy-report.txt $IMAGE_NAME:$IMAGE_TAG
-                '''
+                sh 'trivy image --format table --output trivy-report.txt $IMAGE_NAME:$IMAGE_TAG'
             }
         }
 
@@ -65,21 +62,31 @@ with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
     server.sendmail(gmail_user, to, msg.as_string())
 
 print('Email sent!')
-                    '''
+'''
                     sh 'python3 send_trivy_report.py'
+                }
+            }
+        }
+
+        stage('Configure AWS CLI') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                        mkdir -p ~/.aws
+                        echo "[default]" > ~/.aws/credentials
+                        echo "aws_access_key_id=$AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
+                        echo "aws_secret_access_key=$AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+                    '''
                 }
             }
         }
 
         stage('Login to ECR') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh '''
-                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
-                    '''
-                }
+                sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO'
             }
         }
 
@@ -94,14 +101,10 @@ print('Email sent!')
 
         stage('Deploy to EKS') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh '''
-                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                        aws eks --region $AWS_REGION update-kubeconfig --name mycluster
-                        kubectl apply -f nginx.deployment.yaml
-                    '''
-                }
+                sh '''
+                    aws eks --region $AWS_REGION update-kubeconfig --name mycluster
+                    kubectl apply -f nginx.deployment.yaml
+                '''
             }
         }
     }
