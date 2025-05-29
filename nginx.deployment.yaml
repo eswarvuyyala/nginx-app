@@ -2,11 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
-  namespace: nginx-app
-  labels:
-    app: nginx
+  namespace: app-nginx
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: nginx
@@ -16,14 +14,9 @@ spec:
         app: nginx
     spec:
       containers:
-        - name: nginx-container
-          image: 923687682884.dkr.ecr.ap-south-1.amazonaws.com/nginx:latest
-          ports:
-            - containerPort: 80
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "500m"
+      - name: nginx
+        image: 923687682884.dkr.ecr.ap-south-1.amazonaws.com/nginx:latest
+        ports:
+        - containerPort: 80
+
+
