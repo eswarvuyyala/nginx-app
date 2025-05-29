@@ -40,14 +40,16 @@ pipeline {
         // }
 
         stage('Configure AWS CLI') {
-            steps withCredentials([usernamePassword(credentialsId: 'AWS_CLI', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-    ...
-}
-
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'AWS_CLI', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                     sh '''
+                        echo "Configuring AWS CLI..."
                         aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
                         aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
                         aws configure set region $AWS_REGION
+
+                        echo "Verifying AWS Identity..."
+                        aws sts get-caller-identity
                     '''
                 }
             }
@@ -86,13 +88,3 @@ pipeline {
             }
         }
     }
-
-    post {
-        failure {
-            echo '❌ Pipeline failed!'
-        }
-        success {
-            echo '✅ Pipeline completed successfully!'
-        }
-    }
-}
