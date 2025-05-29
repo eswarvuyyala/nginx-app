@@ -6,9 +6,11 @@ pipeline {
         IMAGE_TAG = 'latest'
         AWS_REGION = 'ap-south-1'
         ECR_REPO = '923687682884.dkr.ecr.ap-south-1.amazonaws.com/nginx'
+        EKS_CLUSTER = 'mycluster'
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 git url: 'https://github.com/eswarvuyyala/nginx-app.git', branch: 'main'
@@ -27,52 +29,24 @@ pipeline {
             }
         }
 
-        stage('Send Trivy Scan Report') {
+        // 🚫 Temporarily disabled email sending
+        // stage('Send Trivy Scan Report') {
+        //     steps {
+        //         withCredentials([usernamePassword(credentialsId: 'GMAIL_SMTP_CREDENTIALS', usernameVariable: 'GMAIL_USER', passwordVariable: 'GMAIL_APP_PASSWORD')]) {
+        //             writeFile file: 'send_trivy_report.py', text: ''' ... '''
+        //             sh 'python3 send_trivy_report.py'
+        //         }
+        //     }
+        // }
+
+        stage('Configure AWS CLI') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'GMAIL_SMTP_CREDENTIALS', 
-                        usernameVariable: 'GMAIL_USER', 
-                        passwordVariable: 'GMAIL_APP_PASSWORD'
-                    )
-                ]) {
-                    script {
-                        def scriptContent = """
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
-from email.mime.text import MIMEText
-
-gmail_user = '${GMAIL_USER}'
-gmail_app_password = '${GMAIL_APP_PASSWORD}'
-to = 'nageswara@logusims.com'
-subject = 'Trivy Scan Report'
-body = 'Please find the attached Trivy scan report.'
-
-msg = MIMEMultipart()
-msg['From'] = gmail_user
-msg['To'] = to
-msg['Subject'] = subject
-msg.attach(MIMEText(body, 'plain'))
-
-filename = 'trivy-report.txt'
-with open(filename, 'rb') as attachment:
-    part = MIMEBase('application', 'octet-stream')
-    part.set_payload(attachment.read())
-    encoders.encode_base64(part)
-    part.add_header('Content-Disposition', f'attachment; filename={filename}')
-    msg.attach(part)
-
-with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-    server.login(gmail_user, gmail_app_password)
-    server.sendmail(gmail_user, to, msg.as_string())
-
-print('Email sent!')
-"""
-                        writeFile file: 'send_trivy_report.py', text: scriptContent
-                        sh 'python3 send_trivy_report.py'
-                    }
+                withCredentials([usernamePassword(credentialsId: 'AWS_CREDENTIALS', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                        aws configure set region $AWS_REGION
+                    '''
                 }
             }
         }
@@ -91,11 +65,28 @@ print('Email sent!')
                 '''
             }
         }
+        
+                stage('Create Namespace') {
+            steps {
+                sh '''
+                    aws eks --region $AWS_REGION update-kubeconfig --name $EKS_CLUSTER
+                    kubectl get namespace app-nginx || kubectl create namespace app-nginx
+                '''
+            }
+        }
 
         stage('Deploy to EKS') {
             steps {
                 sh '''
-                    aws eks --region $AWS_REGION update-kubeconfig --name mycluster
+                    kubectl apply -f nginx.deployment.yaml -n app-nginx
+                '''
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                sh '''
+                    aws eks --region $AWS_REGION update-kubeconfig --name $EKS_CLUSTER
                     kubectl apply -f nginx.deployment.yaml
                 '''
             }
