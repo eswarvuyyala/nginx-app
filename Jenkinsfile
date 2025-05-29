@@ -27,20 +27,25 @@ pipeline {
             }
         }
 
-        // Commented out for now
-        /*
         stage('Send Trivy Scan Report') {
             steps {
-                script {
-                    def scriptContent = '''\
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'GMAIL_SMTP_CREDENTIALS', 
+                        usernameVariable: 'GMAIL_USER', 
+                        passwordVariable: 'GMAIL_APP_PASSWORD'
+                    )
+                ]) {
+                    script {
+                        def scriptContent = """
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from email.mime.text import MIMEText
 
-gmail_user = 'vuyyala6@gmail.com'
-gmail_app_password = 'gpxekuxbssuqwope'
+gmail_user = '${GMAIL_USER}'
+gmail_app_password = '${GMAIL_APP_PASSWORD}'
 to = 'nageswara@logusims.com'
 subject = 'Trivy Scan Report'
 body = 'Please find the attached Trivy scan report.'
@@ -64,22 +69,10 @@ with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
     server.sendmail(gmail_user, to, msg.as_string())
 
 print('Email sent!')
-'''
-                    writeFile file: 'send_trivy_report.py', text: scriptContent
-                    sh 'python3 send_trivy_report.py'
-                }
-            }
-        }
-        */
-
-        stage('Configure AWS CLI') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'AWS_CLI', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh '''
-                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-                        aws configure set region $AWS_REGION
-                    '''
+"""
+                        writeFile file: 'send_trivy_report.py', text: scriptContent
+                        sh 'python3 send_trivy_report.py'
+                    }
                 }
             }
         }
