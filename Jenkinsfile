@@ -55,13 +55,14 @@ pipeline {
 
         stage('Configure AWS CLI') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'AWS_CREDENTIALS', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh """
-                        aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
-                        aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
-                        aws configure set region ${AWS_REGION}
-                    """
-                }
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+                  credentialsId: 'AWS_CREDENTIALS']]) {
+                  sh """
+     		     aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER
+     		     # your AWS CLI commands go here
+   		    """
+ 		}
+
             }
         }
 
