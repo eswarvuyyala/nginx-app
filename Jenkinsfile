@@ -7,9 +7,17 @@ pipeline {
         AWS_REGION = 'ap-south-1'
         ECR_REPO = '923687682884.dkr.ecr.ap-south-1.amazonaws.com/nginx'
         EKS_CLUSTER = 'mycluster'
+        RECIPIENT = 'nageswara@logusims.com'
     }
 
     stages {
+        stage('Notify Build Start') {
+            steps {
+                mail to: "${RECIPIENT}",
+                     subject: "🚀 Jenkins Build Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                     body: "The build has started.\n\nJob: ${env.JOB_NAME}\nBuild: #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
+            }
+        }
 
         stage('Checkout Code') {
             steps {
@@ -33,7 +41,7 @@ pipeline {
             }
         }
 
-        // Uncomment and implement when needed
+        // Optional Email Report Sending - Uncomment when needed
         /*
         stage('Send Trivy Scan Report') {
             steps {
@@ -76,7 +84,7 @@ pipeline {
             steps {
                 sh """
                     aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER}
-                    kubectl get namespace app-nginx || kubectl create namespace app-nginx
+                    kubectl get namespace app-nginx || kubectl create namespace nginx-nginx
                 """
             }
         }
@@ -85,9 +93,26 @@ pipeline {
             steps {
                 sh """
                     aws eks --region ${AWS_REGION} update-kubeconfig --name ${EKS_CLUSTER}
-                    kubectl apply -f nginx.deployment.yaml -n app-nginx
+                    #kubectl apply -f nginx.deployment.yaml -n app-nginx
+					kubectl apply -f nginx-servive.yaml -n app-nginx
                 """
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+            mail to: "${RECIPIENT}",
+                 subject: "✅ SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "The Jenkins pipeline completed successfully.\n\nDetails: ${env.BUILD_URL}"
+        }
+
+        failure {
+            echo '❌ Pipeline failed!'
+            mail to: "${RECIPIENT}",
+                 subject: "❌ FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "The Jenkins pipeline failed.\n\nDetails: ${env.BUILD_URL}"
         }
     }
 }
