@@ -4,7 +4,7 @@ pipeline {
     environment {
         RECIPIENT = 'nageswara@logusims.com'
         IMAGE_NAME = 'nginx-app'
-        IMAGE_TAG = 'V1.0.0'
+        IMAGE_TAG = "v1.0.${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -16,8 +16,7 @@ pipeline {
 
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
-URL: ${env.BUILD_URL}
-"""
+URL: ${env.BUILD_URL}"""
             }
         }
 
@@ -45,6 +44,51 @@ URL: ${env.BUILD_URL}
             }
         }
 
+        stage('Send Trivy Scan Report') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'GMAIL_SMTP_CREDENTIALS', usernameVariable: 'GMAIL_USER', passwordVariable: 'GMAIL_APP_PASSWORD')]) {
+                    writeFile file: 'send_trivy_report.py', text: '''
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+
+sender_email = "${GMAIL_USER}"
+receiver_email = "${RECIPIENT}"
+password = "${GMAIL_APP_PASSWORD}"
+
+# Create message
+msg = MIMEMultipart()
+msg['From'] = sender_email
+msg['To'] = receiver_email
+msg['Subject'] = "🛡️ Trivy Report for ${IMAGE_NAME}:${IMAGE_TAG}"
+
+body = "Hi,\n\nPlease find the attached Trivy security scan report.\n\nRegards,\nJenkins"
+msg.attach(MIMEText(body, 'plain'))
+
+# Attach report
+filename = "trivy-report.txt"
+attachment = open(filename, "rb")
+part = MIMEBase('application', 'octet-stream')
+part.set_payload((attachment).read())
+encoders.encode_base64(part)
+part.add_header('Content-Disposition', f'attachment; filename= {filename}')
+msg.attach(part)
+
+# Send mail
+server = smtplib.SMTP('smtp.gmail.com', 587)
+server.starttls()
+server.login(sender_email, password)
+text = msg.as_string()
+server.sendmail(sender_email, receiver_email, text)
+server.quit()
+'''
+                    sh 'python3 send_trivy_report.py'
+                }
+            }
+        }
+
         stage('Notify Build Success') {
             steps {
                 mail to: "${RECIPIENT}",
@@ -53,22 +97,9 @@ URL: ${env.BUILD_URL}
 
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
-URL: ${env.BUILD_URL}
-"""
+URL: ${env.BUILD_URL}"""
             }
         }
-
-        // Optional stage to send Trivy scan report via custom script
-        
-        stage('Send Trivy Scan Report') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'GMAIL_SMTP_CREDENTIALS', usernameVariable: 'GMAIL_USER', passwordVariable: 'GMAIL_APP_PASSWORD')]) {
-                    writeFile file: 'send_trivy_report.py', text: '''...'''
-                    sh 'python3 send_trivy_report.py'
-                }
-            }
-        }
-        */
     }
 
     post {
@@ -79,8 +110,7 @@ URL: ${env.BUILD_URL}
 
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
-URL: ${env.BUILD_URL}
-"""
+URL: ${env.BUILD_URL}"""
         }
     }
 }
