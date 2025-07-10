@@ -13,10 +13,34 @@ pipeline {
             }
         }
 
+        stage('Maven Build') {
+            steps {
+                echo "🔧 Running Maven clean and verify..."
+                sh 'mvn clean verify'
+            }
+        }
+
+        stage('SonarQube Scan') {
+            environment {
+                SONAR_HOST_URL = 'http://13.201.203.112:9000'
+            }
+            steps {
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                    echo "🔍 Running SonarQube scan..."
+                    sh '''
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=nginx-app \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.login=$SONAR_TOKEN
+                    '''
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo "🔧 Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "🐳 Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
@@ -25,7 +49,7 @@ pipeline {
         stage('Trivy Scan') {
             steps {
                 script {
-                    echo "🔍 Running Trivy scan..."
+                    echo "🔎 Running Trivy scan on Docker image..."
                     sh "trivy image --format table --output trivy-report.txt ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
@@ -43,10 +67,9 @@ from email import encoders
 import os
 
 sender_email = os.environ.get("GMAIL_USER")
-receiver_email = os.environ.get("GMAIL_USER")  # sending to self or update as needed
+receiver_email = os.environ.get("GMAIL_USER")  # send to self
 password = os.environ.get("GMAIL_APP_PASSWORD")
 
-# Create message
 msg = MIMEMultipart()
 msg['From'] = sender_email
 msg['To'] = receiver_email
@@ -55,7 +78,6 @@ msg['Subject'] = "🛡️ Trivy Report for nginx-app"
 body = "Hi,\n\nPlease find the attached Trivy security scan report.\n\nRegards,\nJenkins"
 msg.attach(MIMEText(body, 'plain'))
 
-# Attach report
 filename = "trivy-report.txt"
 with open(filename, "rb") as attachment:
     part = MIMEBase('application', 'octet-stream')
@@ -64,7 +86,6 @@ with open(filename, "rb") as attachment:
     part.add_header('Content-Disposition', f'attachment; filename= {filename}')
     msg.attach(part)
 
-# Send mail
 server = smtplib.SMTP('smtp.gmail.com', 587)
 server.starttls()
 server.login(sender_email, password)
@@ -74,6 +95,13 @@ server.quit()
                     sh 'python3 send_trivy_report.py'
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo '🧹 Cleaning up workspace...'
+            cleanWs()
         }
     }
 }
