@@ -1,0 +1,28 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.example</groupId>
+  <artifactId>nodejs</artifactId>
+  <version>1.0</version>
+  <packaging>pom</packaging>
+
+  <properties>
+    <sonar.projectKey>myapp</sonar.projectKey>
+    <sonar.host.url>http://13.201.203.112:9000</sonar.host.url>
+    <sonar.login>sqp_d8df8e10d9964df05e7c4cd71f47b6d31d4c0d06</sonar.login>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.sonarsource.scanner.maven</groupId>
+        <artifactId>sonar-maven-plugin</artifactId>
+        <version>3.10.0.2594</version>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>
